@@ -180,6 +180,9 @@ function matchSimpleVersion(version, pattern) {
     if (parts[i] === 'x') {
       parts[i] = '\\d+'
     }
+    if (!isNaN(parts[i])) {
+      continue
+    }
   }
   let matchPattern = ''
   for (let i = 0; i < parts.length; i++) {
