@@ -1,6 +1,7 @@
 const core = require('@actions/core')
 const axios = require('axios')
 const { manifestBaseUrl } = require('./constants')
+const { matchSimpleVersion } = require('./helpers')
 
 /**
  * Retrieves the latest version of a Flutter SDK release based on the specified parameters.
@@ -50,10 +51,12 @@ async function getLatestVersion(osName, channel, arch, version) {
 
   try {
     core.info('Getting latest version...')
+    console.log(manifestUrl)
     const response = await axios.get(manifestUrl)
     const channelHash = response.data.current_release[channel]
     if (!channelHash) {
       core.setFailed(`Channel ${channel} not found`)
+      core.error(`Channel ${channel} not found`)
       return
     }
 
@@ -66,7 +69,7 @@ async function getLatestVersion(osName, channel, arch, version) {
       } else {
         if (arch && arch !== '') {
           if (
-            value.version === version &&
+            matchSimpleVersion(value.version, version) &&
             value.dart_sdk_arch === arch &&
             value.channel === channel
           ) {
@@ -82,12 +85,15 @@ async function getLatestVersion(osName, channel, arch, version) {
 
     for (const entry of channelEntries) {
       if (version && version !== '' && arch && arch !== '') {
-        if (entry.version === version && entry.dart_sdk_arch === arch) {
+        if (
+          matchSimpleVersion(entry.version, version) &&
+          entry.dart_sdk_arch === arch
+        ) {
           filteredEntry = entry
           break
         }
       } else if (version && version !== '') {
-        if (entry.version === version) {
+        if (matchSimpleVersion(entry.version, version)) {
           filteredEntry = entry
           break
         }
@@ -102,14 +108,17 @@ async function getLatestVersion(osName, channel, arch, version) {
     if (!filteredEntry.version) {
       if (version && version !== '' && arch && arch !== '') {
         core.setFailed(`Version ${version} with architecture ${arch} not found`)
+        core.error(`Version ${version} with architecture ${arch} not found`)
         return
       }
       if (version && version !== '') {
         core.setFailed(`Version ${version} not found`)
+        core.error(`Version ${version} not found`)
         return
       }
       if (arch && arch !== '') {
         core.setFailed(`Architecture ${arch} not found`)
+        core.error(`Architecture ${arch} not found`)
         return
       }
     } else {
@@ -123,6 +132,7 @@ async function getLatestVersion(osName, channel, arch, version) {
     }
   } catch (error) {
     core.setFailed('Failed to get the latest version')
+    core.error(`Failed to get the latest version: ${error}`)
   }
 }
 
