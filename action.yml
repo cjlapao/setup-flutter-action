@@ -1,4 +1,4 @@
-name: 'Setup Flutter SDK on GitHub Actions'
+name: 'Setup Flutter SDK Environment on GitHub Actions'
 description: 'Setup Flutter SDK on GitHub Actions'
 author: 'Carlos Lapao'
 branding:
