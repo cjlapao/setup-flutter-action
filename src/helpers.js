@@ -2,6 +2,7 @@ const core = require('@actions/core')
 const path = require('path')
 const fs = require('fs')
 const { decompressTempFolder } = require('./constants')
+const _ = require('lodash')
 
 /**
  * Generates a cache key based on the provided release entity.
@@ -172,7 +173,8 @@ function matchSimpleVersion(version, pattern) {
   pattern = pattern.toLocaleLowerCase()
   const parts = pattern.split('.')
   for (let i = 0; i < parts.length; i++) {
-    if (parts[i] === '*') {
+    parts[i] = _.escapeRegExp(parts[i].toLocaleLowerCase())
+    if (parts[i] === '\\*') {
       parts[i] = '\\d+'
     }
     if (parts[i] === 'x') {

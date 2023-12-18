@@ -32024,6 +32024,69 @@ exports["default"] = _default;
 
 /***/ }),
 
+/***/ 2426:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+const core = __nccwpck_require__(2186)
+const exec = __nccwpck_require__(1514)
+const path = __nccwpck_require__(1017)
+const fs = __nccwpck_require__(7147)
+
+async function cloneVersion(runOptions) {
+  core.info(`Cloning Flutter ${runOptions.version} from ${runOptions.channel}`)
+  const downloadUrl = 'https://github.com/flutter/flutter.git'
+  const options = {}
+  options.listeners = {
+    stdout: data => {
+      output += data.toString()
+    },
+    stderr: data => {
+      errorOutput += data.toString()
+    }
+  }
+  const clonePath = path.join(runOptions.tempFolder, 'flutter')
+
+  if (fs.existsSync(clonePath)) {
+    core.info(`Cleaning up ${clonePath}`)
+    fs.rmSync(clonePath, { recursive: true })
+  }
+
+  let output = ''
+  let errorOutput = ''
+  await exec.exec(
+    `git`,
+    ['clone', '-b', runOptions.channel, '--depth', '1', downloadUrl, clonePath],
+    options
+  )
+
+  if (
+    runOptions.version !== 'any' &&
+    runOptions.version !== '' &&
+    runOptions.version !== 'latest'
+  ) {
+    output = ''
+    errorOutput = ''
+    await exec.exec(`git`, ['checkout', runOptions.version], options)
+  }
+
+  if (runOptions.version) {
+    core.info(
+      `Cloned Flutter ${runOptions.version} from ${runOptions.channel} to ${clonePath}`
+    )
+  } else {
+    core.info(`Cloned Flutter from ${runOptions.channel} to ${clonePath}`)
+  }
+
+  return clonePath
+}
+
+module.exports = {
+  cloneVersion
+}
+
+
+/***/ }),
+
 /***/ 4438:
 /***/ ((module) => {
 
@@ -32141,6 +32204,7 @@ module.exports = { downloadVersion }
 const core = __nccwpck_require__(2186)
 const axios = __nccwpck_require__(8757)
 const { manifestBaseUrl } = __nccwpck_require__(4438)
+const { matchSimpleVersion } = __nccwpck_require__(8505)
 
 /**
  * Retrieves the latest version of a Flutter SDK release based on the specified parameters.
@@ -32190,10 +32254,12 @@ async function getLatestVersion(osName, channel, arch, version) {
 
   try {
     core.info('Getting latest version...')
+    console.log(manifestUrl)
     const response = await axios.get(manifestUrl)
     const channelHash = response.data.current_release[channel]
     if (!channelHash) {
       core.setFailed(`Channel ${channel} not found`)
+      core.error(`Channel ${channel} not found`)
       return
     }
 
@@ -32206,7 +32272,7 @@ async function getLatestVersion(osName, channel, arch, version) {
       } else {
         if (arch && arch !== '') {
           if (
-            value.version === version &&
+            matchSimpleVersion(value.version, version) &&
             value.dart_sdk_arch === arch &&
             value.channel === channel
           ) {
@@ -32222,12 +32288,15 @@ async function getLatestVersion(osName, channel, arch, version) {
 
     for (const entry of channelEntries) {
       if (version && version !== '' && arch && arch !== '') {
-        if (entry.version === version && entry.dart_sdk_arch === arch) {
+        if (
+          matchSimpleVersion(entry.version, version) &&
+          entry.dart_sdk_arch === arch
+        ) {
           filteredEntry = entry
           break
         }
       } else if (version && version !== '') {
-        if (entry.version === version) {
+        if (matchSimpleVersion(entry.version, version)) {
           filteredEntry = entry
           break
         }
@@ -32242,14 +32311,17 @@ async function getLatestVersion(osName, channel, arch, version) {
     if (!filteredEntry.version) {
       if (version && version !== '' && arch && arch !== '') {
         core.setFailed(`Version ${version} with architecture ${arch} not found`)
+        core.error(`Version ${version} with architecture ${arch} not found`)
         return
       }
       if (version && version !== '') {
         core.setFailed(`Version ${version} not found`)
+        core.error(`Version ${version} not found`)
         return
       }
       if (arch && arch !== '') {
         core.setFailed(`Architecture ${arch} not found`)
+        core.error(`Architecture ${arch} not found`)
         return
       }
     } else {
@@ -32263,6 +32335,7 @@ async function getLatestVersion(osName, channel, arch, version) {
     }
   } catch (error) {
     core.setFailed('Failed to get the latest version')
+    core.error(`Failed to get the latest version: ${error}`)
   }
 }
 
@@ -32287,37 +32360,196 @@ const { decompressTempFolder } = __nccwpck_require__(4438)
  * @returns {string} The generated cache key.
  */
 function getCacheKey(releaseEntity) {
+  const options = getOptions()
   const cacheKey = core.getInput('cache-key')
   if (cacheKey && cacheKey !== '') {
     return cacheKey
   }
 
   if (!releaseEntity) {
-    return `flutter-${process.env['RUNNER_OS']}-${process.env['RUNNER_ARCH']}`
+    return `flutter-${options.osName}-${options.arch}`
   }
 
-  return `flutter-${releaseEntity.channel}-${releaseEntity.version}-${releaseEntity.dart_sdk_arch}-${releaseEntity.hash}-${releaseEntity.sha256}`
+  const key = `flutter-${releaseEntity.channel}-${releaseEntity.version}-${releaseEntity.dart_sdk_arch}-${releaseEntity.hash}-${releaseEntity.sha256}`
+  console.log(key)
+  return key
 }
 
 /**
  * Cleans up the temporary folder used for decompression.
  */
 function clean() {
-  const baseFolder = process.env['RUNNER_TEMP']
-  const tempFolder = path.join(baseFolder, decompressTempFolder)
-  if (fs.existsSync(tempFolder)) {
-    core.info(`Cleaning up ${tempFolder}`)
-    fs.rm(tempFolder, { recursive: true }, err => {
+  const options = getOptions()
+  if (fs.existsSync(options.tempFolder)) {
+    core.info(`Cleaning up ${options.tempFolder}`)
+    fs.rm(options.tempFolder, { recursive: true }, err => {
       if (err) {
-        core.warning(`Error cleaning up ${tempFolder}: ${err}`)
+        core.warning(`Error cleaning up ${options.tempFolder}: ${err}`)
       }
     })
   }
 }
 
+function getOptions() {
+  const runOptions = {}
+
+  let arch = core.getInput('architecture')
+  let version = core.getInput('flutter-version')
+  let channel = core.getInput('channel')
+
+  let osName = process.env['RUNNER_OS']
+  if (!osName || osName === '') {
+    osName = process.platform
+  }
+  if (osName === 'darwin') {
+    osName = 'macos'
+  }
+
+  if (!arch || arch === '') {
+    arch = process.env['RUNNER_ARCH']
+    if (!arch || arch === '') {
+      arch = process.arch
+    }
+
+    // linux does not have arm64 builds
+    if (osName === 'linux' && arch === 'arm64') {
+      arch = 'x64'
+      channel = 'master'
+    }
+  }
+
+  if (
+    process.env['FLUTTER_CHANNEL'] !== undefined &&
+    process.env['FLUTTER_CHANNEL'] !== ''
+  ) {
+    channel = process.env['FLUTTER_CHANNEL']
+  }
+
+  if (!channel || channel === '') {
+    channel = 'stable'
+  }
+
+  if (
+    process.env['FLUTTER_VERSION'] !== undefined &&
+    process.env['FLUTTER_VERSION'] !== ''
+  ) {
+    version = process.env['FLUTTER_VERSION']
+  }
+
+  if (version === 'any' || version === 'latest' || !version) {
+    version = process.env['FLUTTER_VERSION']
+    version = ''
+  }
+
+  // sometimes the x64 architecture is reported as amd64
+  if (arch !== undefined && arch !== '') {
+    if (arch === 'amd64') {
+      arch = 'x64'
+    }
+  }
+
+  if (!osName) {
+    core.error('OS was not detected')
+    return
+  }
+  osName = osName.toLocaleLowerCase()
+  if (!channel) {
+    core.error('Channel was not defined')
+    return
+  }
+  channel = channel.toLocaleLowerCase()
+  if (!arch) {
+    core.error('Architecture was not set')
+    return
+  }
+  arch = arch.toLocaleLowerCase()
+
+  if (version || version !== '') {
+    version = version.toLocaleLowerCase()
+  }
+
+  const baseFolder = process.env['RUNNER_TEMP']
+  if (!baseFolder || baseFolder === '') {
+    core.error('Could not get temp folder')
+    return
+  }
+
+  const tempFolder = path.join(baseFolder, decompressTempFolder)
+  const flutterFolder = path.join(tempFolder, 'flutter')
+  let cacheBaseFolder = core.getInput('cache-path')
+  if (!cacheBaseFolder || cacheBaseFolder === '') {
+    cacheBaseFolder = process.env['RUNNER_TOOL_CACHE']
+  }
+
+  // defining the options object
+  runOptions.arch = arch
+  runOptions.osName = osName
+  runOptions.channel = channel
+  runOptions.version = version
+  runOptions.baseFolder = process.env['RUNNER_TEMP']
+  runOptions.tempFolder = tempFolder
+  runOptions.flutterFolder = flutterFolder
+  runOptions.cacheBaseFolder = cacheBaseFolder
+
+  return runOptions
+}
+
+function matchVersion(version, pattern) {
+  const regex = new RegExp(pattern)
+  return regex.test(version)
+}
+
+function getHighestVersion(versions, pattern) {
+  // Replace '*' in the pattern with a regex wildcard
+  const regexPattern = pattern.replace(/\*/g, '\\d+')
+
+  // Filter versions that match the pattern
+  const matchingVersions = versions.filter(version =>
+    matchVersion(version, regexPattern)
+  )
+
+  // Sort the matching versions in descending order
+  matchingVersions.sort((a, b) =>
+    b.localeCompare(a, undefined, { numeric: true, sensitivity: 'base' })
+  )
+
+  // Return the highest version
+  return matchingVersions[0]
+}
+
+function matchSimpleVersion(version, pattern) {
+  pattern = pattern.toLocaleLowerCase()
+  const parts = pattern.split('.')
+  for (let i = 0; i < parts.length; i++) {
+    if (parts[i] === '*') {
+      parts[i] = '\\d+'
+    }
+    if (parts[i] === 'x') {
+      parts[i] = '\\d+'
+    }
+  }
+  let matchPattern = ''
+  for (let i = 0; i < parts.length; i++) {
+    if (i === 0) {
+      matchPattern += '^'
+    }
+    matchPattern += '('
+    matchPattern += parts[i]
+    if (i < parts.length - 1) {
+      matchPattern += '\\.'
+    }
+    matchPattern += ')'
+  }
+  matchPattern += '.*$'
+  return matchVersion(version, matchPattern)
+}
+
 module.exports = {
   getCacheKey,
-  clean
+  clean,
+  getOptions,
+  getHighestVersion,
+  matchSimpleVersion
 }
 
 
@@ -32338,73 +32570,66 @@ const core = __nccwpck_require__(2186)
 const path = __nccwpck_require__(1017)
 const { getLatestVersion } = __nccwpck_require__(3404)
 const exec = __nccwpck_require__(1514)
-const { clean, getCacheKey } = __nccwpck_require__(8505)
+const { clean, getCacheKey, getOptions } = __nccwpck_require__(8505)
 const { downloadVersion } = __nccwpck_require__(6897)
 const tc = __nccwpck_require__(7784)
-const { decompressTempFolder } = __nccwpck_require__(4438)
+const { cloneVersion } = __nccwpck_require__(2426)
 
 /**
  * The main function for the action.
  * @returns {Promise<void>} Resolves when the action is complete.
  */
 async function run() {
+  core.info('Setting up Flutter...')
   try {
-    let arch = core.getInput('architecture')
-    let version = core.getInput('flutter-version')
-    let channel = core.getInput('channel')
-
-    let osName = process.env['RUNNER_OS']
-    if (osName === 'darwin') {
-      osName = 'macos'
+    const runOptions = getOptions()
+    let releaseEntity = undefined
+    if (!runOptions || runOptions === undefined) {
+      core.setFailed('Invalid options')
+      return
     }
 
-    if (!arch || arch === '') {
-      arch = process.env['RUNNER_ARCH'].toLowerCase()
+    if (runOptions.channel !== 'main' && runOptions.channel !== 'master') {
+      releaseEntity = await getLatestVersion(
+        runOptions.osName,
+        runOptions.channel,
+        runOptions.arch,
+        runOptions.version
+      )
     }
 
-    if (!channel || channel === '') {
-      channel = 'stable'
-    }
+    const cacheFolder = path.join(
+      runOptions.cacheBaseFolder,
+      getCacheKey(releaseEntity)
+    )
+    console.log(cacheFolder)
+    runOptions.cacheFolder = cacheFolder
 
-    if (version === 'any' || version === 'latest' || !version) {
-      version = ''
-    }
-
-    // sometimes the x64 architecture is reported as amd64
-    if (arch !== undefined && arch !== '') {
-      if (arch === 'amd64') {
-        arch = 'x64'
-      }
-    }
-
-    osName = osName.toLocaleLowerCase()
-    channel = channel.toLocaleLowerCase()
-    arch = arch.toLocaleLowerCase()
-    version = version.toLocaleLowerCase()
-
-    const releaseEntity = await getLatestVersion(osName, channel, arch, version)
-
-    const baseFolder = process.env['RUNNER_TEMP']
-    const tempFolder = path.join(baseFolder, decompressTempFolder)
-    const flutterFolder = path.join(tempFolder, 'flutter')
-    let cacheBaseFolder = core.getInput('cache-path')
-    if (!cacheBaseFolder || cacheBaseFolder === '') {
-      cacheBaseFolder = process.env['RUNNER_TOOL_CACHE']
-    }
-
-    const cacheFolder = path.join(cacheBaseFolder, getCacheKey(releaseEntity))
-    if (core.getBooleanInput('query-only')) {
+    if (
+      core.getInput('query-only') !== '' &&
+      core.getBooleanInput('query-only')
+    ) {
       core.setOutput('channel', releaseEntity.channel)
       core.setOutput('version', releaseEntity.version)
       core.setOutput('architecture', releaseEntity.dart_sdk_arch)
       core.setOutput('cache-path', cacheFolder)
       core.setOutput('cache-key', getCacheKey(releaseEntity))
     } else {
-      const flutterDirectory = tc.find(
-        'flutter',
-        releaseEntity.version,
-        releaseEntity.dart_sdk_arch
-      )
+      let flutterDirectory = ''
+      if (releaseEntity !== undefined) {
+        flutterDirectory = tc.find(
+          'flutter',
+          releaseEntity.version,
+          releaseEntity.dart_sdk_arch
+        )
+      } else {
+        flutterDirectory = tc.find(
+          'flutter',
+          runOptions.osName,
+          runOptions.arch
+        )
+      }
+
       if (
         flutterDirectory &&
         fs.existsSync(path.join(flutterDirectory, 'bin', 'flutter'))
@@ -32434,21 +32659,48 @@ async function run() {
       }
 
       try {
-        await downloadVersion(releaseEntity)
+        if (runOptions.channel === 'main' || runOptions.channel === 'master') {
+          await cloneVersion(runOptions)
+        } else {
+          await downloadVersion(releaseEntity)
+        }
       } catch (error) {
         core.setFailed(error)
         return
       }
 
-      core.info(`Installing Flutter ${releaseEntity.version}...`)
+      if (releaseEntity === undefined) {
+        releaseEntity = {
+          channel: runOptions.channel,
+          version: runOptions.version,
+          dart_sdk_arch: runOptions.arch
+        }
+
+        if (runOptions.version) {
+          core.info(
+            `Installing Flutter ${runOptions.version} from ${runOptions.channel}...`
+          )
+        } else {
+          core.info(`Installing Flutter from ${runOptions.channel}...`)
+        }
+      } else {
+        core.info(`Installing Flutter ${releaseEntity.version}...`)
+      }
+
+      if (fs.existsSync(cacheFolder)) {
+        core.info(`Cleaning up ${cacheFolder} `)
+        fs.rmSync(cacheFolder, { recursive: true })
+      }
 
       fs.mkdirSync(cacheFolder, { recursive: true })
       try {
-        fs.renameSync(flutterFolder, cacheFolder)
+        fs.renameSync(runOptions.flutterFolder, cacheFolder)
       } catch (error) {
-        core.error(`Error moving ${flutterFolder} to ${cacheFolder}: ${error}`)
+        core.error(
+          `Error moving ${runOptions.flutterFolder} to ${cacheFolder}: ${error} `
+        )
         core.setFailed(
-          `Error moving ${flutterFolder} to ${cacheFolder}: ${error}`
+          `Error moving ${runOptions.flutterFolder} to ${cacheFolder}: ${error} `
         )
         return
       }
@@ -32465,6 +32717,17 @@ async function run() {
           errorOutput += data.toString()
         }
       }
+      output = ''
+      errorOutput = ''
+      await exec.exec(
+        `"${path.join(cacheFolder, 'bin', 'flutter')}"`,
+        ['precache'],
+        options
+      )
+
+      output = ''
+      errorOutput = ''
+      core.setOutput('doctor-output', output)
       await exec.exec(
         `"${path.join(cacheFolder, 'bin', 'flutter')}"`,
         ['doctor', '-v'],
@@ -32480,14 +32743,6 @@ async function run() {
         options
       )
       core.setOutput('version-output', output)
-
-      output = ''
-      errorOutput = ''
-      await exec.exec(
-        `"${path.join(cacheFolder, 'bin', 'flutter')}"`,
-        ['precache'],
-        options
-      )
       core.setOutput('precache-output', output)
 
       core.exportVariable('FLUTTER_HOME', path.join(cacheFolder))
@@ -32503,7 +32758,7 @@ async function run() {
       core.setOutput('cache-key', getCacheKey(releaseEntity))
       clean()
 
-      if (core.getBooleanInput('cache')) {
+      if (core.getInput('cache') !== '' && core.getBooleanInput('cache')) {
         core.info(`Caching ${cacheFolder}...`)
         const cachePath = await tc.cacheDir(
           cacheFolder,
@@ -32511,7 +32766,7 @@ async function run() {
           releaseEntity.version,
           releaseEntity.dart_sdk_arch
         )
-        core.info(`Cache ID: ${cachePath}`)
+        core.info(`Cache ID: ${cachePath} `)
         core.addPath(cachePath)
       }
     }
