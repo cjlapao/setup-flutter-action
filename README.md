@@ -4,8 +4,10 @@
 [![Lint Codebase](https://github.com/cjlapao/setup-flutter/actions/workflows/linter.yml/badge.svg)](https://github.com/cjlapao/setup-flutter/actions/workflows/linter.yml)
 [![CI](https://github.com/cjlapao/setup-flutter/actions/workflows/ci.yml/badge.svg)](https://github.com/cjlapao/setup-flutter/actions/workflows/ci.yml)
 
-This action sets up a flutter environment for use in actions on any environment, it works on windows, linux and macOS.
-in Linux it does take into consideration that the arm64 architecture is not yet supported by flutter, this will install the current amd64 and allow flutter internals to do the rest.
+This action sets up a flutter environment for use in actions on any environment,
+it works on windows, linux and macOS. In Linux it does take into consideration
+that the arm64 architecture is not yet supported by flutter, this will install
+the current amd64 and allow flutter internals to do the rest.
 
 ## Usage
 
