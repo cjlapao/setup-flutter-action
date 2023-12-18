@@ -10,6 +10,7 @@ in Linux it does take into consideration that the arm64 architecture is not yet 
 ## Usage
 
 you can define what channel you want to use:
+
 ```yaml
 steps:
   - uses: actions/checkout@v2
@@ -19,6 +20,7 @@ steps:
 ```
 
 or you can define the version you want to use:
+
 ```yaml
 steps:
   - uses: actions/checkout@v2
@@ -48,4 +50,3 @@ steps:
 | `cache-key`    | The key to the flutter installation            |
 | `channel`      | The channel of flutter that was installed      |
 | `architecture` | The architecture of flutter that was installed |
-
