@@ -10,88 +10,66 @@ const core = require('@actions/core')
 const path = require('path')
 const { getLatestVersion } = require('./get-latest-version')
 const exec = require('@actions/exec')
-const { clean, getCacheKey } = require('./helpers')
+const { clean, getCacheKey, getOptions } = require('./helpers')
 const { downloadVersion } = require('./download-version')
 const tc = require('@actions/tool-cache')
-const { decompressTempFolder } = require('./constants')
+const { cloneVersion } = require('./clone-version')
 
 /**
  * The main function for the action.
  * @returns {Promise<void>} Resolves when the action is complete.
  */
 async function run() {
+  core.info('Setting up Flutter...')
   try {
-    let arch = core.getInput('architecture')
-    let version = core.getInput('flutter-version')
-    let channel = core.getInput('channel')
-
-    let osName = process.env['RUNNER_OS']
-    if (osName === 'darwin') {
-      osName = 'macos'
+    const runOptions = getOptions()
+    let releaseEntity = undefined
+    if (!runOptions || runOptions === undefined) {
+      core.setFailed('Invalid options')
+      return
     }
 
-    if (!arch || arch === '') {
-      arch = process.env['RUNNER_ARCH'].toLowerCase()
+    if (runOptions.channel !== 'main' && runOptions.channel !== 'master') {
+      releaseEntity = await getLatestVersion(
+        runOptions.osName,
+        runOptions.channel,
+        runOptions.arch,
+        runOptions.version
+      )
     }
+
+    const cacheFolder = path.join(
+      runOptions.cacheBaseFolder,
+      getCacheKey(releaseEntity)
+    )
+    console.log(cacheFolder)
+    runOptions.cacheFolder = cacheFolder
 
     if (
-      process.env['FLUTTER_CHANNEL'] !== undefined &&
-      process.env['FLUTTER_CHANNEL'] !== ''
+      core.getInput('query-only') !== '' &&
+      core.getBooleanInput('query-only')
     ) {
-      channel = process.env['FLUTTER_CHANNEL']
-    }
-
-    if (!channel || channel === '') {
-      channel = 'stable'
-    }
-
-    if (
-      process.env['FLUTTER_VERSION'] !== undefined &&
-      process.env['FLUTTER_VERSION'] !== ''
-    ) {
-      version = process.env['FLUTTER_VERSION']
-    }
-
-    if (version === 'any' || version === 'latest' || !version) {
-      version = process.env['FLUTTER_VERSION']
-      version = ''
-    }
-
-    // sometimes the x64 architecture is reported as amd64
-    if (arch !== undefined && arch !== '') {
-      if (arch === 'amd64') {
-        arch = 'x64'
-      }
-    }
-
-    osName = osName.toLocaleLowerCase()
-    channel = channel.toLocaleLowerCase()
-    arch = arch.toLocaleLowerCase()
-    version = version.toLocaleLowerCase()
-
-    const releaseEntity = await getLatestVersion(osName, channel, arch, version)
-
-    const baseFolder = process.env['RUNNER_TEMP']
-    const tempFolder = path.join(baseFolder, decompressTempFolder)
-    const flutterFolder = path.join(tempFolder, 'flutter')
-    let cacheBaseFolder = core.getInput('cache-path')
-    if (!cacheBaseFolder || cacheBaseFolder === '') {
-      cacheBaseFolder = process.env['RUNNER_TOOL_CACHE']
-    }
-
-    const cacheFolder = path.join(cacheBaseFolder, getCacheKey(releaseEntity))
-    if (core.getBooleanInput('query-only')) {
       core.setOutput('channel', releaseEntity.channel)
       core.setOutput('version', releaseEntity.version)
       core.setOutput('architecture', releaseEntity.dart_sdk_arch)
       core.setOutput('cache-path', cacheFolder)
       core.setOutput('cache-key', getCacheKey(releaseEntity))
     } else {
-      const flutterDirectory = tc.find(
-        'flutter',
-        releaseEntity.version,
-        releaseEntity.dart_sdk_arch
-      )
+      let flutterDirectory = ''
+      if (releaseEntity !== undefined) {
+        flutterDirectory = tc.find(
+          'flutter',
+          releaseEntity.version,
+          releaseEntity.dart_sdk_arch
+        )
+      } else {
+        flutterDirectory = tc.find(
+          'flutter',
+          runOptions.osName,
+          runOptions.arch
+        )
+      }
+
       if (
         flutterDirectory &&
         fs.existsSync(path.join(flutterDirectory, 'bin', 'flutter'))
@@ -121,21 +99,48 @@ async function run() {
       }
 
       try {
-        await downloadVersion(releaseEntity)
+        if (runOptions.channel === 'main' || runOptions.channel === 'master') {
+          await cloneVersion(runOptions)
+        } else {
+          await downloadVersion(releaseEntity)
+        }
       } catch (error) {
         core.setFailed(error)
         return
       }
 
-      core.info(`Installing Flutter ${releaseEntity.version}...`)
+      if (releaseEntity === undefined) {
+        releaseEntity = {
+          channel: runOptions.channel,
+          version: runOptions.version,
+          dart_sdk_arch: runOptions.arch
+        }
+
+        if (runOptions.version) {
+          core.info(
+            `Installing Flutter ${runOptions.version} from ${runOptions.channel}...`
+          )
+        } else {
+          core.info(`Installing Flutter from ${runOptions.channel}...`)
+        }
+      } else {
+        core.info(`Installing Flutter ${releaseEntity.version}...`)
+      }
+
+      if (fs.existsSync(cacheFolder)) {
+        core.info(`Cleaning up ${cacheFolder} `)
+        fs.rmSync(cacheFolder, { recursive: true })
+      }
 
       fs.mkdirSync(cacheFolder, { recursive: true })
       try {
-        fs.renameSync(flutterFolder, cacheFolder)
+        fs.renameSync(runOptions.flutterFolder, cacheFolder)
       } catch (error) {
-        core.error(`Error moving ${flutterFolder} to ${cacheFolder}: ${error}`)
+        core.error(
+          `Error moving ${runOptions.flutterFolder} to ${cacheFolder}: ${error} `
+        )
         core.setFailed(
-          `Error moving ${flutterFolder} to ${cacheFolder}: ${error}`
+          `Error moving ${runOptions.flutterFolder} to ${cacheFolder}: ${error} `
         )
         return
       }
@@ -152,6 +157,17 @@ async function run() {
           errorOutput += data.toString()
         }
       }
+      output = ''
+      errorOutput = ''
+      await exec.exec(
+        `"${path.join(cacheFolder, 'bin', 'flutter')}"`,
+        ['precache'],
+        options
+      )
+
+      output = ''
+      errorOutput = ''
+      core.setOutput('doctor-output', output)
       await exec.exec(
         `"${path.join(cacheFolder, 'bin', 'flutter')}"`,
         ['doctor', '-v'],
@@ -167,14 +183,6 @@ async function run() {
         options
       )
       core.setOutput('version-output', output)
-
-      output = ''
-      errorOutput = ''
-      await exec.exec(
-        `"${path.join(cacheFolder, 'bin', 'flutter')}"`,
-        ['precache'],
-        options
-      )
       core.setOutput('precache-output', output)
 
       core.exportVariable('FLUTTER_HOME', path.join(cacheFolder))
@@ -190,7 +198,7 @@ async function run() {
       core.setOutput('cache-key', getCacheKey(releaseEntity))
       clean()
 
-      if (core.getBooleanInput('cache')) {
+      if (core.getInput('cache') !== '' && core.getBooleanInput('cache')) {
         core.info(`Caching ${cacheFolder}...`)
         const cachePath = await tc.cacheDir(
           cacheFolder,
@@ -198,7 +206,7 @@ async function run() {
           releaseEntity.version,
           releaseEntity.dart_sdk_arch
         )
-        core.info(`Cache ID: ${cachePath}`)
+        core.info(`Cache ID: ${cachePath} `)
         core.addPath(cachePath)
       }
     }
