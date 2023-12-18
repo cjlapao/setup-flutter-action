@@ -1,6 +1,6 @@
 const core = require('@actions/core')
 const path = require('path')
-const { getOptions } = require('../src/helpers')
+const { getOptions, matchSimpleVersion } = require('../src/helpers')
 
 // Mock the GitHub Actions core library
 const errorMock = jest.spyOn(core, 'error').mockImplementation()
@@ -53,5 +53,21 @@ describe('getOptions', () => {
     )
     expect(options.cacheBaseFolder).toBe('/custom-cache')
     expect(errorMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('matchSimpleVersion', () => {
+  it('matches simple version pattern', () => {
+    const version = '1.2.3'
+    const pattern = '1.x.*'
+    const result = matchSimpleVersion(version, pattern)
+    expect(result).toBe(true)
+  })
+
+  it('does not match simple version pattern', () => {
+    const version = '1.2.3'
+    const pattern = '2.x.*'
+    const result = matchSimpleVersion(version, pattern)
+    expect(result).toBe(false)
   })
 })

@@ -145,14 +145,14 @@ function getOptions() {
   return runOptions
 }
 
-function matchVersion(string, pattern) {
+function matchVersion(version, pattern) {
   const regex = new RegExp(pattern)
-  return regex.test(string)
+  return regex.test(version)
 }
 
 function getHighestVersion(versions, pattern) {
   // Replace '*' in the pattern with a regex wildcard
-  const regexPattern = pattern.replace('*', '\\d+')
+  const regexPattern = pattern.replace(/\*/g, '\\d+')
 
   // Filter versions that match the pattern
   const matchingVersions = versions.filter(version =>
@@ -169,6 +169,7 @@ function getHighestVersion(versions, pattern) {
 }
 
 function matchSimpleVersion(version, pattern) {
+  pattern = pattern.toLocaleLowerCase()
   const parts = pattern.split('.')
   for (let i = 0; i < parts.length; i++) {
     if (parts[i] === '*') {
