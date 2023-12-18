@@ -34,11 +34,26 @@ async function run() {
       arch = process.env['RUNNER_ARCH'].toLowerCase()
     }
 
+    if (
+      process.env['FLUTTER_CHANNEL'] !== undefined &&
+      process.env['FLUTTER_CHANNEL'] !== ''
+    ) {
+      channel = process.env['FLUTTER_CHANNEL']
+    }
+
     if (!channel || channel === '') {
       channel = 'stable'
     }
 
+    if (
+      process.env['FLUTTER_VERSION'] !== undefined &&
+      process.env['FLUTTER_VERSION'] !== ''
+    ) {
+      version = process.env['FLUTTER_VERSION']
+    }
+
     if (version === 'any' || version === 'latest' || !version) {
+      version = process.env['FLUTTER_VERSION']
       version = ''
     }
 
