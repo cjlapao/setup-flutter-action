@@ -1,8 +1,8 @@
 # Create a JavaScript Action
 
-![coverage](https://raw.githubusercontent.com/cjlapao/setup-flutter/main/badges/coverage.svg)
-[![Lint Codebase](https://github.com/cjlapao/setup-flutter/actions/workflows/linter.yml/badge.svg)](https://github.com/cjlapao/setup-flutter/actions/workflows/linter.yml)
-[![CI](https://github.com/cjlapao/setup-flutter/actions/workflows/ci.yml/badge.svg)](https://github.com/cjlapao/setup-flutter/actions/workflows/ci.yml)
+![coverage](https://raw.githubusercontent.com/cjlapao/setup-flutter-action/main/badges/coverage.svg)
+[![Lint Codebase](https://github.com/cjlapao/setup-flutter-action/actions/workflows/linter.yml/badge.svg)](https://github.com/cjlapao/setup-flutter-action/actions/workflows/linter.yml)
+[![CI](https://github.com/cjlapao/setup-flutter-action/actions/workflows/ci.yml/badge.svg)](https://github.com/cjlapao/setup-flutter-action/actions/workflows/ci.yml)
 
 This action sets up a flutter environment for use in actions on any environment,
 it works on windows, linux and macOS. In Linux it does take into consideration
