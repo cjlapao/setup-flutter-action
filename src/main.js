@@ -145,6 +145,32 @@ async function run() {
         return
       }
 
+      // adding the path to the flutter executable on git
+      if (runOptions.channel === 'main' || runOptions.channel === 'master') {
+        let output = ''
+        let errorOutput = ''
+
+        const options = {}
+        options.listeners = {
+          stdout: data => {
+            output += data.toString()
+          },
+          stderr: data => {
+            errorOutput += data.toString()
+          }
+        }
+        await exec.exec(
+          'git',
+          ['config', '--global', '--add', 'safe.directory', cacheFolder],
+          options
+        )
+        if (errorOutput !== '') {
+          core.error(errorOutput)
+          core.setFailed(errorOutput)
+          return
+        }
+      }
+
       let output = ''
       let errorOutput = ''
 
