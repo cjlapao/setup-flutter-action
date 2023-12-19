@@ -49689,7 +49689,12 @@ function getOptions() {
     }
 
     // linux does not have arm64 builds
-    if (osName === 'linux' && arch === 'arm64') {
+    if (
+      osName &&
+      arch &&
+      osName.toLocaleLowerCase() === 'linux' &&
+      arch.toLocaleLowerCase() === 'arm64'
+    ) {
       arch = 'x64'
       runOptions.clone = true
     }
