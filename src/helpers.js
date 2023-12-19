@@ -84,17 +84,18 @@ function getOptions() {
     if (!arch || arch === '') {
       arch = process.arch
     }
+  }
 
-    // linux does not have arm64 builds
-    if (
-      osName &&
-      arch &&
-      osName.toLocaleLowerCase() === 'linux' &&
-      arch.toLocaleLowerCase() === 'arm64'
-    ) {
-      arch = 'x64'
-      runOptions.clone = true
-    }
+  // linux does not have arm64 builds
+  if (
+    osName &&
+    arch &&
+    osName.toLocaleLowerCase() === 'linux' &&
+    arch.toLocaleLowerCase() === 'arm64'
+  ) {
+    arch = 'x64'
+    console.log('Setting arch to x64 and cloning')
+    runOptions.clone = true
   }
 
   if (
@@ -113,6 +114,7 @@ function getOptions() {
     process.env['FLUTTER_VERSION'] !== ''
   ) {
     version = process.env['FLUTTER_VERSION']
+    console.log(`Version from env: ${version}`)
   }
 
   if (version === 'any' || version === 'latest' || !version) {
