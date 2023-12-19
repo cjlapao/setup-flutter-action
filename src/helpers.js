@@ -21,8 +21,29 @@ function getCacheKey(releaseEntity) {
   if (!releaseEntity) {
     return `flutter-${options.osName}-${options.arch}`
   }
+  let key = 'flutter'
+  if (releaseEntity.osName) {
+    key += `-${releaseEntity.osName}`
+  }
+  if (
+    releaseEntity.channel &&
+    releaseEntity.channel !== releaseEntity.version
+  ) {
+    key += `-${releaseEntity.channel}`
+  }
+  if (releaseEntity.version) {
+    key += `-${releaseEntity.version}`
+  }
+  if (releaseEntity.dart_sdk_arch) {
+    key += `-${releaseEntity.dart_sdk_arch}`
+  }
+  if (releaseEntity.hash) {
+    key += `-${releaseEntity.hash}`
+  }
+  if (releaseEntity.sha256) {
+    key += `-${releaseEntity.sha256}`
+  }
 
-  const key = `flutter-${releaseEntity.channel}-${releaseEntity.version}-${releaseEntity.dart_sdk_arch}-${releaseEntity.hash}-${releaseEntity.sha256}`
   console.log(key)
   return key
 }
@@ -44,6 +65,7 @@ function clean() {
 
 function getOptions() {
   const runOptions = {}
+  runOptions.clone = false
 
   let arch = core.getInput('architecture')
   let version = core.getInput('flutter-version')
@@ -66,7 +88,7 @@ function getOptions() {
     // linux does not have arm64 builds
     if (osName === 'linux' && arch === 'arm64') {
       arch = 'x64'
-      channel = 'master'
+      runOptions.clone = true
     }
   }
 
@@ -92,6 +114,9 @@ function getOptions() {
     version = process.env['FLUTTER_VERSION']
     version = ''
   }
+  if (runOptions.clone && !version) {
+    version = channel
+  }
 
   // sometimes the x64 architecture is reported as amd64
   if (arch !== undefined && arch !== '') {
@@ -105,11 +130,13 @@ function getOptions() {
     return
   }
   osName = osName.toLocaleLowerCase()
+
   if (!channel) {
     core.error('Channel was not defined')
     return
   }
   channel = channel.toLocaleLowerCase()
+
   if (!arch) {
     core.error('Architecture was not set')
     return

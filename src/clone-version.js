@@ -4,7 +4,9 @@ const path = require('path')
 const fs = require('fs')
 
 async function cloneVersion(runOptions) {
-  core.info(`Cloning Flutter ${runOptions.version} from ${runOptions.channel}`)
+  core.info(
+    `Cloning Flutter ${runOptions.version} from ${runOptions.channel} to ${runOptions.cacheFolder}`
+  )
   const downloadUrl = 'https://github.com/flutter/flutter.git'
   const options = {}
   options.listeners = {
@@ -15,18 +17,25 @@ async function cloneVersion(runOptions) {
       errorOutput += data.toString()
     }
   }
-  const clonePath = path.join(runOptions.tempFolder, 'flutter')
 
-  if (fs.existsSync(clonePath)) {
-    core.info(`Cleaning up ${clonePath}`)
-    fs.rmSync(clonePath, { recursive: true })
+  if (fs.existsSync(runOptions.cacheFolder)) {
+    core.info(`Cleaning up ${runOptions.cacheFolder}`)
+    fs.rmSync(runOptions.cacheFolder, { recursive: true })
   }
 
   let output = ''
   let errorOutput = ''
   await exec.exec(
     `git`,
-    ['clone', '-b', runOptions.channel, '--depth', '1', downloadUrl, clonePath],
+    [
+      'clone',
+      '-b',
+      runOptions.channel,
+      '--depth',
+      '1',
+      downloadUrl,
+      runOptions.cacheFolder
+    ],
     options
   )
 
@@ -37,18 +46,46 @@ async function cloneVersion(runOptions) {
   ) {
     output = ''
     errorOutput = ''
-    await exec.exec(`git`, ['checkout', runOptions.version], options)
+    const checkoutOptions = {}
+    checkoutOptions.listeners = {
+      stdout: data => {
+        output += data.toString()
+      },
+      stderr: data => {
+        errorOutput += data.toString()
+      }
+    }
+    checkoutOptions.cwd = runOptions.cacheFolder
+    await exec.exec(`git`, ['checkout', runOptions.version], checkoutOptions)
   }
 
   if (runOptions.version) {
     core.info(
-      `Cloned Flutter ${runOptions.version} from ${runOptions.channel} to ${clonePath}`
+      `Cloned Flutter ${runOptions.version} from ${runOptions.channel} to ${runOptions.cacheFolder}`
     )
   } else {
-    core.info(`Cloned Flutter from ${runOptions.channel} to ${clonePath}`)
+    core.info(
+      `Cloned Flutter from ${runOptions.channel} to ${runOptions.cacheFolder}`
+    )
   }
 
-  return clonePath
+  output = ''
+  errorOutput = ''
+
+  core.info(`Adding ${runOptions.cacheFolder} to git safe directory...`)
+  await exec.exec(
+    'git',
+    ['config', '--global', '--add', 'safe.directory', runOptions.cacheFolder],
+    options
+  )
+
+  if (errorOutput !== '') {
+    core.error(errorOutput)
+    core.setFailed(errorOutput)
+    return
+  }
+
+  return runOptions.cacheFolder
 }
 
 module.exports = {

@@ -29,7 +29,13 @@ async function run() {
       return
     }
 
-    if (runOptions.channel !== 'main' && runOptions.channel !== 'master') {
+    if (runOptions.clone) {
+      releaseEntity = {
+        channel: runOptions.channel,
+        version: runOptions.version,
+        dart_sdk_arch: runOptions.arch
+      }
+    } else {
       releaseEntity = await getLatestVersion(
         runOptions.osName,
         runOptions.channel,
@@ -38,11 +44,11 @@ async function run() {
       )
     }
 
+    releaseEntity.osName = runOptions.osName
     const cacheFolder = path.join(
       runOptions.cacheBaseFolder,
       getCacheKey(releaseEntity)
     )
-    console.log(cacheFolder)
     runOptions.cacheFolder = cacheFolder
 
     if (
@@ -56,19 +62,11 @@ async function run() {
       core.setOutput('cache-key', getCacheKey(releaseEntity))
     } else {
       let flutterDirectory = ''
-      if (releaseEntity !== undefined) {
-        flutterDirectory = tc.find(
-          'flutter',
-          releaseEntity.version,
-          releaseEntity.dart_sdk_arch
-        )
-      } else {
-        flutterDirectory = tc.find(
-          'flutter',
-          runOptions.osName,
-          runOptions.arch
-        )
-      }
+      flutterDirectory = tc.find(
+        'flutter',
+        releaseEntity.version,
+        releaseEntity.dart_sdk_arch
+      )
 
       if (
         flutterDirectory &&
@@ -77,6 +75,33 @@ async function run() {
         core.info(
           `Found Flutter in cache ${flutterDirectory}, skipping installation`
         )
+        if (runOptions.clone) {
+          let output = ''
+          let errorOutput = ''
+
+          const options = {}
+          options.listeners = {
+            stdout: data => {
+              output += data.toString()
+            },
+            stderr: data => {
+              errorOutput += data.toString()
+            }
+          }
+          core.info(`Adding ${flutterDirectory} to git safe directory...`)
+          await exec.exec(
+            'git',
+            ['config', '--global', '--add', 'safe.directory', flutterDirectory],
+            options
+          )
+
+          if (errorOutput !== '') {
+            core.error(errorOutput)
+            core.setFailed(errorOutput)
+            return
+          }
+        }
+
         core.setOutput('used-cached', 'true')
         core.addPath(path.join(flutterDirectory, 'bin'))
         core.exportVariable('FLUTTER_HOME', flutterDirectory)
@@ -98,77 +123,47 @@ async function run() {
         return
       }
 
-      try {
-        if (runOptions.channel === 'main' || runOptions.channel === 'master') {
-          await cloneVersion(runOptions)
-        } else {
-          await downloadVersion(releaseEntity)
-        }
-      } catch (error) {
-        core.setFailed(error)
-        return
-      }
-
-      if (releaseEntity === undefined) {
-        releaseEntity = {
-          channel: runOptions.channel,
-          version: runOptions.version,
-          dart_sdk_arch: runOptions.arch
-        }
-
-        if (runOptions.version) {
-          core.info(
-            `Installing Flutter ${runOptions.version} from ${runOptions.channel}...`
-          )
-        } else {
-          core.info(`Installing Flutter from ${runOptions.channel}...`)
-        }
-      } else {
-        core.info(`Installing Flutter ${releaseEntity.version}...`)
-      }
-
       if (fs.existsSync(cacheFolder)) {
         core.info(`Cleaning up ${cacheFolder} `)
         fs.rmSync(cacheFolder, { recursive: true })
       }
 
-      fs.mkdirSync(cacheFolder, { recursive: true })
       try {
-        fs.renameSync(runOptions.flutterFolder, cacheFolder)
+        core.info(`Creating ${cacheFolder}...`)
+        fs.mkdirSync(cacheFolder, { recursive: true })
       } catch (error) {
-        core.error(
-          `Error moving ${runOptions.flutterFolder} to ${cacheFolder}: ${error} `
-        )
-        core.setFailed(
-          `Error moving ${runOptions.flutterFolder} to ${cacheFolder}: ${error} `
-        )
+        core.error(`Error creating ${cacheFolder}: ${error} `)
+        core.setFailed(`Error creating ${cacheFolder}: ${error} `)
         return
       }
 
-      // adding the path to the flutter executable on git
-      if (runOptions.channel === 'main' || runOptions.channel === 'master') {
-        let output = ''
-        let errorOutput = ''
+      core.info(
+        `Installing Flutter ${runOptions.version} from ${runOptions.channel}...`
+      )
 
-        const options = {}
-        options.listeners = {
-          stdout: data => {
-            output += data.toString()
-          },
-          stderr: data => {
-            errorOutput += data.toString()
+      try {
+        if (runOptions.clone) {
+          await cloneVersion(runOptions)
+        } else {
+          await downloadVersion(releaseEntity)
+          core.info(`Moving ${runOptions.flutterFolder} to ${cacheFolder}...`)
+
+          try {
+            fs.renameSync(runOptions.flutterFolder, cacheFolder)
+          } catch (error) {
+            core.error(
+              `Error moving ${runOptions.flutterFolder} to ${cacheFolder}: ${error} `
+            )
+            core.setFailed(
+              `Error moving ${runOptions.flutterFolder} to ${cacheFolder}: ${error} `
+            )
+            return
           }
         }
-        await exec.exec(
-          'git',
-          ['config', '--global', '--add', 'safe.directory', cacheFolder],
-          options
-        )
-        if (errorOutput !== '') {
-          core.error(errorOutput)
-          core.setFailed(errorOutput)
-          return
-        }
+      } catch (error) {
+        core.error(error)
+        core.setFailed(error)
+        return
       }
 
       let output = ''
@@ -190,6 +185,15 @@ async function run() {
         ['precache'],
         options
       )
+
+      // core.info(`Adding ${cacheFolder} to PATH...`)
+      // output = ''
+      // errorOutput = ''
+      // await exec.exec(
+      //   'export',
+      //   [`PATH="$PATH":"${path.join(cacheFolder, 'bin')}"`],
+      //   options
+      // )
 
       output = ''
       errorOutput = ''
