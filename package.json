@@ -34,7 +34,7 @@
     "test": "(jest && make-coverage-badge --output-path ./badges/coverage.svg) || make-coverage-badge --output-path ./badges/coverage.svg",
     "all": "npm run format:write && npm run lint && npm run test && npm run package"
   },
-  "license": "MIT",
+  "license": "fair.io",
   "eslintConfig": {
     "extends": "./.github/linters/eslint.config.mjs"
   },
@@ -43,7 +43,8 @@
     "clearMocks": true,
     "testEnvironment": "node",
     "moduleFileExtensions": [
-      "js"
+      "js",
+      "ts"
     ],
     "testMatch": [
       "**/*.test.js"
@@ -55,8 +56,12 @@
     "coverageReporters": [
       "json-summary",
       "text",
-      "lcov"
+      "lcov",
+      "cobertura"
     ],
+    "transform": {
+      "^.+\\.ts$": "ts-jest"
+    },
     "collectCoverage": true,
     "collectCoverageFrom": [
       "./src/**"
