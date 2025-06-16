@@ -87,7 +87,7 @@
     "@typescript-eslint/eslint-plugin": "^8.33.1",
     "@typescript-eslint/parser": "^8.32.1",
     "@vercel/ncc": "^0.38.3",
-    "babel-preset-jest": "^29.6.3",
+    "babel-preset-jest": "^30.0.0",
     "eslint": "^9.28.0",
     "eslint-plugin-github": "^5.1.7",
     "eslint-plugin-jest": "^28.13.0",
