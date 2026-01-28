@@ -73,7 +73,7 @@
     "@actions/http-client": "^3.0.0",
     "@actions/tool-cache": "^2.0.2",
     "axios": "^1.13.2",
-    "lodash": "^4.17.21"
+    "lodash": "^4.17.23"
   },
   "devDependencies": {
     "@babel/core": "^7.28.5",
