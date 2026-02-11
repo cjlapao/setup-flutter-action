@@ -72,7 +72,7 @@
     "@actions/exec": "^2.0.0",
     "@actions/http-client": "^3.0.0",
     "@actions/tool-cache": "^3.0.0",
-    "axios": "^1.13.3",
+    "axios": "^1.13.5",
     "lodash": "^4.17.23"
   },
   "devDependencies": {
