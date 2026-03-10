@@ -1,6 +1,7 @@
 import jest from 'eslint-plugin-jest'
 import prettier from 'eslint-plugin-prettier'
 import typescript from '@typescript-eslint/eslint-plugin'
+import typescriptParser from '@typescript-eslint/parser'
 import globals from 'globals'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -51,12 +52,9 @@ export default [
         SharedArrayBuffer: 'readonly'
       },
 
+      parser: typescriptParser,
       ecmaVersion: 2023,
-      sourceType: 'module',
-
-      parserOptions: {
-        requireConfigFile: false,
-      }
+      sourceType: 'module'
     },
 
     rules: {
