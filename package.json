@@ -29,8 +29,8 @@
     "format:write": "prettier --write **/*.js",
     "format:check": "prettier --check **/*.js",
     "lint": "npx eslint . -c ./.github/linters/eslint.config.mjs",
-    "package": "ncc build src/index.js --license licenses.txt",
-    "package:watch": "npm run package -- --watch",
+    "package": "tsup && generate-license-file --input package.json --output dist/licenses.txt --overwrite",
+    "package:watch": "tsup --watch",
     "test": "(jest && make-coverage-badge --output-path ./badges/coverage.svg) || make-coverage-badge --output-path ./badges/coverage.svg",
     "all": "npm run format:write && npm run lint && npm run test && npm run package"
   },
@@ -77,7 +77,6 @@
   },
   "devDependencies": {
     "@babel/core": "^7.29.0",
-    "@babel/eslint-parser": "^7.28.6",
     "@babel/preset-env": "^7.29.0",
     "@eslint/eslintrc": "^3.3.4",
     "@eslint/js": "^9.39.2",
