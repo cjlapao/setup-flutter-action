@@ -2,7 +2,6 @@ import jest from 'eslint-plugin-jest'
 import prettier from 'eslint-plugin-prettier'
 import typescript from '@typescript-eslint/eslint-plugin'
 import globals from 'globals'
-import babelParser from '@babel/eslint-parser'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import js from '@eslint/js'
@@ -52,18 +51,11 @@ export default [
         SharedArrayBuffer: 'readonly'
       },
 
-      parser: babelParser,
       ecmaVersion: 2023,
       sourceType: 'module',
 
       parserOptions: {
         requireConfigFile: false,
-
-        babelOptions: {
-          babelrc: false,
-          configFile: false,
-          presets: ['jest']
-        }
       }
     },
 
