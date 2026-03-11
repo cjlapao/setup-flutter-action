@@ -41531,7 +41531,9 @@ var require_helpers = __commonJS({
       }
       if (version === "any" || version === "latest" || !version) {
         version = process.env["FLUTTER_VERSION"];
-        version = "";
+        if (!version || version === "") {
+          version = channel;
+        }
       }
       if (runOptions.clone && !version) {
         version = channel;
