@@ -1,6 +1,15 @@
 /**
  * Unit tests for the action's main functionality, src/main.js
  */
+
+jest.mock(
+  '@actions/exec',
+  () => ({
+    exec: jest.fn().mockResolvedValue(0)
+  }),
+  { virtual: true }
+)
+
 const core = require('@actions/core')
 const tc = require('@actions/tool-cache')
 const main = require('../src/main')

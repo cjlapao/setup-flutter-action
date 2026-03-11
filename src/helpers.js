@@ -2,7 +2,6 @@ const core = require('@actions/core')
 const path = require('path')
 const fs = require('fs')
 const { decompressTempFolder } = require('./constants')
-const _ = require('lodash')
 
 /**
  * Generates a cache key based on the provided release entity.
@@ -180,18 +179,30 @@ function getOptions() {
   return runOptions
 }
 
-function matchVersion(version, pattern) {
-  const regex = new RegExp(pattern)
-  return regex.test(version)
+function matchSimpleVersion(version, pattern) {
+  const versionParts = version.toLowerCase().split('.')
+  const patternParts = pattern.toLowerCase().split('.')
+
+  if (versionParts.length < patternParts.length) {
+    return false
+  }
+
+  for (let i = 0; i < patternParts.length; i++) {
+    const p = patternParts[i]
+    if (p === '*' || p === 'x') {
+      continue
+    }
+    if (versionParts[i] !== p) {
+      return false
+    }
+  }
+  return true
 }
 
 function getHighestVersion(versions, pattern) {
-  // Replace '*' in the pattern with a regex wildcard
-  const regexPattern = pattern.replace(/\*/g, '\\d+')
-
   // Filter versions that match the pattern
   const matchingVersions = versions.filter(version =>
-    matchVersion(version, regexPattern)
+    matchSimpleVersion(version, pattern)
   )
 
   // Sort the matching versions in descending order
@@ -201,37 +212,6 @@ function getHighestVersion(versions, pattern) {
 
   // Return the highest version
   return matchingVersions[0]
-}
-
-function matchSimpleVersion(version, pattern) {
-  pattern = pattern.toLocaleLowerCase()
-  const parts = pattern.split('.')
-  for (let i = 0; i < parts.length; i++) {
-    parts[i] = _.escapeRegExp(parts[i].toLocaleLowerCase())
-    if (parts[i] === '\\*') {
-      parts[i] = '\\d+'
-    }
-    if (parts[i] === 'x') {
-      parts[i] = '\\d+'
-    }
-    if (!isNaN(parts[i])) {
-      continue
-    }
-  }
-  let matchPattern = ''
-  for (let i = 0; i < parts.length; i++) {
-    if (i === 0) {
-      matchPattern += '^'
-    }
-    matchPattern += '('
-    matchPattern += parts[i]
-    if (i < parts.length - 1) {
-      matchPattern += '\\.'
-    }
-    matchPattern += ')'
-  }
-  matchPattern += '.*$'
-  return matchVersion(version, matchPattern)
 }
 
 module.exports = {
