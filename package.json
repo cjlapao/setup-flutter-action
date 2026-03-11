@@ -24,6 +24,7 @@
     "node": ">=20"
   },
   "scripts": {
+    "postinstall": "patch-package",
     "bundle": "npm run format:write && npm run package",
     "ci-test": "jest --runInBand",
     "format:write": "prettier --write **/*.js",
@@ -91,16 +92,17 @@
     "eslint-plugin-github": "^5.1.7",
     "eslint-plugin-jest": "^29.15.0",
     "eslint-plugin-prettier": "^5.5.5",
+    "generate-license-file": "^4.1.1",
     "globals": "^17.4.0",
     "jest": "^30.2.0",
     "make-coverage-badge": "^1.2.0",
+    "patch-package": "^8.0.1",
     "prettier": "^3.8.1",
     "ts-jest": "^29.4.6",
     "ts-node": "^10.9.2",
-    "typescript": "^5.9.3",
-    "uglify-js": "^3.19.3",
     "tsup": "^8.5.0",
-    "generate-license-file": "^4.1.1"
+    "typescript": "^5.9.3",
+    "uglify-js": "^3.19.3"
   },
   "overrides": {
     "undici": "7.18.2",
