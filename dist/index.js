@@ -36446,6 +36446,7 @@ var require_get_intrinsic = __commonJS({
       "%eval%": eval,
       // eslint-disable-line no-eval
       "%EvalError%": $EvalError,
+      "%Float16Array%": typeof Float16Array === "undefined" ? undefined2 : Float16Array,
       "%Float32Array%": typeof Float32Array === "undefined" ? undefined2 : Float32Array,
       "%Float64Array%": typeof Float64Array === "undefined" ? undefined2 : Float64Array,
       "%FinalizationRegistry%": typeof FinalizationRegistry === "undefined" ? undefined2 : FinalizationRegistry,

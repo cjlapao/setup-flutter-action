@@ -312,7 +312,7 @@ SOFTWARE.
 
 The following npm package may be included in this product:
 
- - get-intrinsic@1.2.7
+ - get-intrinsic@1.3.0
 
 This package contains the following license:
 
@@ -463,7 +463,7 @@ SOFTWARE.
 
 The following npm packages may be included in this product:
 
- - call-bind-apply-helpers@1.0.1
+ - call-bind-apply-helpers@1.0.2
  - es-define-property@1.0.1
  - es-errors@1.3.0
  - es-object-atoms@1.1.1
