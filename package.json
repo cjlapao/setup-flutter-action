@@ -103,6 +103,7 @@
     "generate-license-file": "^4.1.1"
   },
   "overrides": {
-    "undici": "7.18.2"
+    "undici": "7.18.2",
+    "minimatch": "9.0.7"
   }
 }
