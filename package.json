@@ -54,6 +54,10 @@
       "/node_modules/",
       "/dist/"
     ],
+    "moduleNameMapper": {
+      "^@actions/core$": "<rootDir>/__tests__/mocks/actions-core.js",
+      "^@actions/tool-cache$": "<rootDir>/__tests__/mocks/actions-tool-cache.js"
+    },
     "coverageReporters": [
       "json-summary",
       "text",
@@ -80,7 +84,7 @@
     "@babel/core": "^7.29.0",
     "@babel/preset-env": "^7.29.0",
     "@eslint/eslintrc": "^3.3.4",
-    "@eslint/js": "^9.39.2",
+    "@eslint/js": "^10.0.1",
     "@types/jest": "^30.0.0",
     "@types/jsdom": "^27.0.0",
     "@types/node": "^25.3.3",
@@ -88,8 +92,7 @@
     "@typescript-eslint/parser": "^8.40.0",
     "@vercel/ncc": "^0.38.4",
     "babel-preset-jest": "^30.2.0",
-    "eslint": "^9.39.2",
-    "eslint-plugin-github": "^5.1.7",
+    "eslint": "^10.0.3",
     "eslint-plugin-jest": "^29.15.0",
     "eslint-plugin-prettier": "^5.5.5",
     "generate-license-file": "^4.1.1",
