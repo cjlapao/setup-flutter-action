@@ -10,10 +10,21 @@ jest.mock(
   { virtual: true }
 )
 
+jest.mock('../src/get-latest-version', () => ({
+  getLatestVersion: jest.fn()
+}))
+
+jest.mock('../src/download-version', () => ({
+  downloadVersion: jest.fn().mockResolvedValue(undefined)
+}))
+
 const core = require('@actions/core')
 const tc = require('@actions/tool-cache')
 const main = require('../src/main')
 const fs = require('fs')
+const path = require('path')
+const { getLatestVersion } = require('../src/get-latest-version')
+const { downloadVersion } = require('../src/download-version')
 
 // Mock the GitHub Actions core library
 const debugMock = jest.spyOn(core, 'debug').mockImplementation()
@@ -51,6 +62,16 @@ describe('run', () => {
     process.env['RUNNER_ARCH'] = process.arch
     process.env['RUNNER_TEMP'] = tempDir
     process.env['RUNNER_TOOL_CACHE'] = tempCache
+
+    getLatestVersion.mockResolvedValue({
+      channel: 'stable',
+      version: '3.41.4',
+      dart_sdk_arch: 'x64',
+      archive: 'zip',
+      hash: 'test-hash',
+      sha256: 'test-sha256'
+    })
+
     jest.clearAllMocks()
   })
 
@@ -88,6 +109,9 @@ describe('run', () => {
   }, 300000)
 
   it('[2] run without cache', async () => {
+    const flutterTempFolder = path.join(tempDir, '__decompress_temp', 'flutter')
+    fs.mkdirSync(path.join(flutterTempFolder, 'bin'), { recursive: true })
+
     getBooleanInput.mockImplementation(name => {
       switch (name) {
         case 'query-only':
@@ -101,6 +125,8 @@ describe('run', () => {
 
     await main.run()
     expect(setupMock).toHaveReturned()
+    expect(getLatestVersion).toHaveBeenCalled()
+    expect(downloadVersion).toHaveBeenCalled()
     expect(setOutputMock).toHaveBeenCalledWith('channel', 'stable')
     expect(setOutputMock).toHaveBeenCalledWith('version', expect.any(String))
     expect(setOutputMock).toHaveBeenCalledWith(

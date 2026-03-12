@@ -119,7 +119,7 @@ function getOptions() {
   if (version === 'any' || version === 'latest' || !version) {
     version = process.env['FLUTTER_VERSION']
     if (!version || version === '') {
-      version = channel
+      version = ''
     }
   }
   if (runOptions.clone && !version) {
