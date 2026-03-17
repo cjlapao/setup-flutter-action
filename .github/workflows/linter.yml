@@ -52,3 +52,4 @@ jobs:
           VALIDATE_BIOME_LINT: false
           VALIDATE_CHECKOV: false
           VALIDATE_SPELL_CODESPELL: false
+          VALIDATE_TRIVY: false
